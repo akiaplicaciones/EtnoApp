@@ -1,0 +1,7 @@
+{
+  "name": "etnoapp",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}
