@@ -117,8 +117,8 @@ app.post("/sync/login", requireAuth, async (req, res) => {
   if (upError) return res.status(500).json({ ok: false, error: upError.message });
 
 
-  // Catálogo completo de tipos de usuario
-const { data: tiposUsuario, error: tiposError } = await supabase
+  // Catálogo completo de tipo_usuario
+const { data: tipoUsuario, error: tiposError } = await supabase
   .from("tipo_usuario")
   .select("id_tipo_usuario, nombre_tipo")
   .order("id_tipo_usuario", { ascending: true });
@@ -133,7 +133,7 @@ if (tiposError) {
   usuario,
   proyectos_visibles: proyectos ?? [],
   usuario_proyecto: usuarioProyecto ?? [],
-  tipos_usuario: tiposUsuario ?? []
+  tipo_usuario: tipoUsuario ?? []
 });
 });
 
