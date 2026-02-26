@@ -152,6 +152,7 @@ if (tipoArchivoError) {
 });
 });
 
+
 app.post("/sync/nota", requireAuth, async (req, res) => {
 
   const { titulo, cuerpo, fecha_creacion, id_proyecto, id_tipo_archivo } = req.body;
@@ -160,40 +161,70 @@ app.post("/sync/nota", requireAuth, async (req, res) => {
     return res.status(400).json({ ok: false, error: "Missing fields" });
   }
 
-  // 1. Crear registro raíz en tabla archivo
-  const { data: archivo, error: archivoError } = await supabase
-    .from("archivo")
-    .insert({
-      estado_carga: "sincronizado",
-      fecha_creacion,
-      id_usuario: req.authUser.id,
-      id_proyecto,
-      id_tipo_archivo
-    })
-    .select()
-    .single();
+  try {
 
-  if (archivoError) {
-    return res.status(500).json({ ok: false, error: archivoError.message });
-  }
+    // 1. Crear registro raíz en archivo
+    const { data: archivo, error: archivoError } = await supabase
+      .from("archivo")
+      .insert({
+        estado_carga: "sincronizado",
+        fecha_creacion,
+        id_usuario: req.authUser.id,
+        id_proyecto,
+        id_tipo_archivo
+      })
+      .select()
+      .single();
 
-  // 2. Crear subtabla nota
-  const { error: notaError } = await supabase
-    .from("nota")
-    .insert({
+    if (archivoError) {
+      return res.status(500).json({ ok: false, error: archivoError.message });
+    }
+
+    // 2. Construir JSON
+    const notaJson = {
       id_archivo: archivo.id_archivo,
       titulo,
-      cuerpo
+      cuerpo,
+      fecha_creacion,
+      id_usuario: req.authUser.id,
+      id_proyecto
+    };
+
+    const path = `${req.authUser.id}/notas/${archivo.id_archivo}.json`;
+
+    // 3. Subir JSON al storage
+    const { error: uploadError } = await supabase.storage
+      .from("EtnoApp")
+      .upload(path, Buffer.from(JSON.stringify(notaJson)), {
+        contentType: "application/json"
+      });
+
+    if (uploadError) {
+      return res.status(500).json({ ok: false, error: uploadError.message });
+    }
+
+    // 4. Insertar en subtabla nota con URL
+    const { error: notaError } = await supabase
+      .from("nota")
+      .insert({
+        id_archivo: archivo.id_archivo,
+        url: path,
+        titulo,
+        cuerpo
+      });
+
+    if (notaError) {
+      return res.status(500).json({ ok: false, error: notaError.message });
+    }
+
+    return res.json({
+      ok: true,
+      id_archivo_cloud: archivo.id_archivo
     });
 
-  if (notaError) {
-    return res.status(500).json({ ok: false, error: notaError.message });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
   }
-
-  return res.json({
-    ok: true,
-    id_archivo_cloud: archivo.id_archivo
-  });
 
 });
 
