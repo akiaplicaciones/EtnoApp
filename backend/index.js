@@ -155,7 +155,7 @@ if (tipoArchivoError) {
 
 app.post("/sync/nota", requireAuth, async (req, res) => {
 
-  const { titulo, cuerpo, fecha_creacion, id_proyecto, id_tipo_archivo } = req.body;
+  const { id_archivo, titulo, cuerpo, fecha_creacion, id_proyecto, id_tipo_archivo } = req.body;
 
   if (!titulo || !cuerpo || !fecha_creacion || !id_proyecto || !id_tipo_archivo) {
     return res.status(400).json({ ok: false, error: "Missing fields" });
@@ -167,8 +167,10 @@ app.post("/sync/nota", requireAuth, async (req, res) => {
     const { data: archivo, error: archivoError } = await supabase
       .from("archivo")
       .insert({
+        id_archivo,
         estado_carga: "sincronizado",
         fecha_creacion,
+        fecha_subida: new Date().toISOString(),
         id_usuario: req.authUser.id,
         id_proyecto,
         id_tipo_archivo
