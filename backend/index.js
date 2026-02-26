@@ -127,13 +127,28 @@ if (tiposError) {
   return res.status(500).json({ ok: false, error: tiposError.message });
 }
 
+
+// Catálogo completo de tipo_archivo
+const { data: tipoArchivo, error: tipoArchivoError } = await supabase
+  .from("tipo_archivo")
+  .select("id_tipo_archivo, nombre_tipo_archivo")
+  .order("id_tipo_archivo", { ascending: true });
+
+if (tipoArchivoError) {
+  return res.status(500).json({ ok: false, error: tipoArchivoError.message });
+}
+
+
+//JSON de retorno desde supabase
+
   return res.json({
   ok: true,
   server_time: new Date().toISOString(),
   usuario,
   proyectos_visibles: proyectos ?? [],
   usuario_proyecto: usuarioProyecto ?? [],
-  tipo_usuario: tipoUsuario ?? []
+  tipo_usuario: tipoUsuario ?? [],
+  tipo_archivo: tipoArchivo ?? []
 });
 });
 
