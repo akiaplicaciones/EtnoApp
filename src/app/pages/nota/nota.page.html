@@ -1,0 +1,39 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>nota</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <ion-item>
+    <ion-label position="stacked">Título</ion-label>
+    <ion-input [(ngModel)]="titulo"></ion-input>
+  </ion-item>
+
+  <ion-item>
+    <ion-label position="stacked">Cuerpo</ion-label>
+    <ion-input [(ngModel)]="cuerpo"></ion-input>
+  </ion-item>
+
+  <ion-button expand="block" (click)="guardarNota()">
+    Guardar Nota
+  </ion-button>
+
+  <p>{{ message }}</p>
+
+  <ion-list *ngIf="notas.length > 0">
+  <ion-item *ngFor="let n of notas">
+    <ion-label>
+      <h2>{{ n.titulo }}</h2>
+      <p>{{ n.cuerpo }}</p>
+      <small>{{ n.fecha_creacion }} | {{ n.estado_carga }}</small>
+    </ion-label>
+  </ion-item>
+</ion-list>
+
+<p *ngIf="notas.length === 0">
+  No hay notas creadas.
+</p>
+
+</ion-content>

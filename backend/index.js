@@ -152,6 +152,51 @@ if (tipoArchivoError) {
 });
 });
 
+app.post("/sync/nota", requireAuth, async (req, res) => {
+
+  const { titulo, cuerpo, fecha_creacion, id_proyecto, id_tipo_archivo } = req.body;
+
+  if (!titulo || !cuerpo || !fecha_creacion || !id_proyecto || !id_tipo_archivo) {
+    return res.status(400).json({ ok: false, error: "Missing fields" });
+  }
+
+  // 1. Crear registro raíz en tabla archivo
+  const { data: archivo, error: archivoError } = await supabase
+    .from("archivo")
+    .insert({
+      estado_carga: "sincronizado",
+      fecha_creacion,
+      id_usuario: req.authUser.id,
+      id_proyecto,
+      id_tipo_archivo
+    })
+    .select()
+    .single();
+
+  if (archivoError) {
+    return res.status(500).json({ ok: false, error: archivoError.message });
+  }
+
+  // 2. Crear subtabla nota
+  const { error: notaError } = await supabase
+    .from("nota")
+    .insert({
+      id_archivo: archivo.id_archivo,
+      titulo,
+      cuerpo
+    });
+
+  if (notaError) {
+    return res.status(500).json({ ok: false, error: notaError.message });
+  }
+
+  return res.json({
+    ok: true,
+    id_archivo_cloud: archivo.id_archivo
+  });
+
+});
+
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

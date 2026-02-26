@@ -1,0 +1,23 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Seleccionar Proyecto</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <ion-list>
+    <ion-item 
+      button 
+      *ngFor="let proyecto of proyectos"
+      (click)="seleccionarProyecto(proyecto.id_proyecto)"
+    >
+      {{ proyecto.nombre_proyecto }}
+    </ion-item>
+  </ion-list>
+
+  <div *ngIf="proyectos.length === 0">
+    No hay proyectos disponibles
+  </div>
+
+</ion-content>

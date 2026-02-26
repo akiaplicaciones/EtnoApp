@@ -1,0 +1,23 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Seleccionar Tipo de Usuario</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <ion-list>
+    <ion-item
+      button
+      *ngFor="let tipo of tiposUsuario"
+      (click)="seleccionarTipoUsuario(tipo.id_tipo_usuario)"
+    >
+      {{ tipo.nombre_tipo }}
+    </ion-item>
+  </ion-list>
+
+  <div *ngIf="tiposUsuario.length === 0">
+    No hay tipos de usuario disponibles
+  </div>
+
+</ion-content>
