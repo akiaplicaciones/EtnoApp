@@ -17,6 +17,8 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Funciones utilitarias 
+
 function getBearerToken(req) {
   const auth = req.headers.authorization || "";
   const parts = auth.split(" ");
@@ -144,6 +146,21 @@ app.post("/sync/login", requireAuth, async (req, res) => {
 
 // Sync de archivos
 
+async function archivoYaExiste(id_archivo) { //Función para no tratar de enviar un archivo que ya existe en bbdd central
+                                              //utilizada en tdos los /sync/
+  const { data, error } = await supabase
+    .from("archivo")
+    .select("id_archivo")
+    .eq("id_archivo", id_archivo)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return !!data;
+}
+
 app.post("/sync/nota", requireAuth, async (req, res) => {
 
   const { 
@@ -161,6 +178,15 @@ app.post("/sync/nota", requireAuth, async (req, res) => {
   }
 
   try {
+
+        // 0. Verificar si ya fue sincronizado
+    if (await archivoYaExiste(id_archivo)) {
+      return res.json({
+        ok: true,
+        id_archivo_cloud: id_archivo,
+        already_synced: true
+      });
+    }
 
     // 1. Crear registro raíz en archivo
     const { data: archivo, error: archivoError } = await supabase
@@ -255,6 +281,15 @@ app.post("/sync/contacto-proyecto", requireAuth, async (req, res) => {
 
   try {
 
+    // 0. Verificar si ya fue sincronizado
+    if (await archivoYaExiste(id_archivo)) {
+      return res.json({
+        ok: true,
+        id_archivo_cloud: id_archivo,
+        already_synced: true
+      });
+    }
+
     // 1. Verificar si el contacto ya existe en Supabase
     const { data: existingContacto, error: checkError } = await supabase
       .from("contacto")
@@ -333,6 +368,81 @@ app.post("/sync/contacto-proyecto", requireAuth, async (req, res) => {
   }
 
 });
+
+
+app.post("/sync/audio", requireAuth, async (req, res) => {
+
+  const {
+    id_archivo,
+    formato,
+    duracion,
+    fecha_creacion,
+    id_proyecto,
+    id_tipo_archivo,
+    id_contacto_proyecto,
+    storage_path
+  } = req.body;
+
+  if (!id_archivo || !formato || !fecha_creacion || !id_proyecto || !id_tipo_archivo || !storage_path) {
+    return res.status(400).json({ ok: false, error: "Missing required fields" });
+  }
+
+  try {
+
+    // 0. Idempotencia
+    if (await archivoYaExiste(id_archivo)) {
+      return res.json({
+        ok: true,
+        id_archivo_cloud: id_archivo,
+        already_synced: true
+      });
+    }
+
+    // 1. Crear archivo raíz
+    const { data: archivo, error: archivoError } = await supabase
+      .from("archivo")
+      .insert({
+        id_archivo,
+        estado_carga: "sincronizado",
+        fecha_creacion,
+        fecha_subida: new Date().toISOString(),
+        id_usuario: req.authUser.id,
+        id_proyecto,
+        id_tipo_archivo
+      })
+      .select()
+      .single();
+
+    if (archivoError) {
+      return res.status(500).json({ ok: false, error: archivoError.message });
+    }
+
+    // 2. Insertar en tabla audio
+    const { error: audioError } = await supabase
+      .from("audio")
+      .insert({
+        id_archivo: archivo.id_archivo,
+        formato,
+        duracion: duracion ?? null,
+        url: storage_path,
+        id_contacto_proyecto: id_contacto_proyecto ?? null
+      });
+
+    if (audioError) {
+      return res.status(500).json({ ok: false, error: audioError.message });
+    }
+
+    return res.json({
+      ok: true,
+      id_archivo_cloud: archivo.id_archivo
+    });
+
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+
+});
+
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
