@@ -235,6 +235,11 @@ app.post("/sync/contacto-proyecto", requireAuth, async (req, res) => {
   const {
     id_archivo,
     id_contacto,
+    nombre,
+    apellido_1,
+    apellido_2,
+    telefono,
+    correo,
     cargo,
     organizacion,
     observaciones,
@@ -243,12 +248,48 @@ app.post("/sync/contacto-proyecto", requireAuth, async (req, res) => {
     id_tipo_archivo
   } = req.body;
 
+  // Validación mínima obligatoria
   if (!id_archivo || !id_contacto || !fecha_creacion || !id_proyecto || !id_tipo_archivo) {
-    return res.status(400).json({ ok: false, error: "Missing fields" });
+    return res.status(400).json({ ok: false, error: "Missing required fields" });
   }
 
   try {
 
+    // 1. Verificar si el contacto ya existe en Supabase
+    const { data: existingContacto, error: checkError } = await supabase
+      .from("contacto")
+      .select("id_contacto")
+      .eq("id_contacto", id_contacto)
+      .maybeSingle();
+
+    if (checkError) {
+      return res.status(500).json({ ok: false, error: checkError.message });
+    }
+
+    // 2. Si no existe, crearlo
+    if (!existingContacto) {
+
+      if (!nombre) {
+        return res.status(400).json({ ok: false, error: "Nombre is required to create contacto" });
+      }
+
+      const { error: contactoError } = await supabase
+        .from("contacto")
+        .insert({
+          id_contacto,
+          nombre,
+          apellido_1: apellido_1 ?? null,
+          apellido_2: apellido_2 ?? null,
+          telefono: telefono ?? null,
+          correo: correo ?? null
+        });
+
+      if (contactoError) {
+        return res.status(500).json({ ok: false, error: contactoError.message });
+      }
+    }
+
+    // 3. Crear registro raíz en archivo
     const { data: archivo, error: archivoError } = await supabase
       .from("archivo")
       .insert({
@@ -267,6 +308,7 @@ app.post("/sync/contacto-proyecto", requireAuth, async (req, res) => {
       return res.status(500).json({ ok: false, error: archivoError.message });
     }
 
+    // 4. Crear relación en contacto_proyecto
     const { error: cpError } = await supabase
       .from("contacto_proyecto")
       .insert({
