@@ -153,9 +153,19 @@ if (tipoArchivoError) {
 });
 
 
+// Sync de archivos
+
 app.post("/sync/nota", requireAuth, async (req, res) => {
 
-  const { id_archivo, titulo, cuerpo, fecha_creacion, id_proyecto, id_tipo_archivo } = req.body;
+  const { 
+  id_archivo, 
+  titulo, 
+  cuerpo, 
+  fecha_creacion, 
+  id_proyecto, 
+  id_tipo_archivo,
+  id_contacto_proyecto
+} = req.body;
 
   if (!titulo || !cuerpo || !fecha_creacion || !id_proyecto || !id_tipo_archivo) {
     return res.status(400).json({ ok: false, error: "Missing fields" });
@@ -207,16 +217,79 @@ app.post("/sync/nota", requireAuth, async (req, res) => {
 
     // 4. Insertar en subtabla nota con URL
     const { error: notaError } = await supabase
-      .from("nota")
-      .insert({
-        id_archivo: archivo.id_archivo,
-        url: path,
-        titulo,
-        cuerpo
-      });
+  .from("nota")
+  .insert({
+    id_archivo: archivo.id_archivo,
+    url: path,
+    titulo,
+    cuerpo,
+    id_contacto_proyecto: id_contacto_proyecto ?? null
+  });
 
     if (notaError) {
       return res.status(500).json({ ok: false, error: notaError.message });
+    }
+
+    return res.json({
+      ok: true,
+      id_archivo_cloud: archivo.id_archivo
+    });
+
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+
+});
+
+app.post("/sync/contacto-proyecto", requireAuth, async (req, res) => {
+
+  const {
+    id_archivo,
+    id_contacto,
+    cargo,
+    organizacion,
+    observaciones,
+    fecha_creacion,
+    id_proyecto,
+    id_tipo_archivo
+  } = req.body;
+
+  if (!id_archivo || !id_contacto || !fecha_creacion || !id_proyecto || !id_tipo_archivo) {
+    return res.status(400).json({ ok: false, error: "Missing fields" });
+  }
+
+  try {
+
+    const { data: archivo, error: archivoError } = await supabase
+      .from("archivo")
+      .insert({
+        id_archivo,
+        estado_carga: "sincronizado",
+        fecha_creacion,
+        fecha_subida: new Date().toISOString(),
+        id_usuario: req.authUser.id,
+        id_proyecto,
+        id_tipo_archivo
+      })
+      .select()
+      .single();
+
+    if (archivoError) {
+      return res.status(500).json({ ok: false, error: archivoError.message });
+    }
+
+    const { error: cpError } = await supabase
+      .from("contacto_proyecto")
+      .insert({
+        id_archivo: archivo.id_archivo,
+        id_contacto,
+        cargo: cargo ?? null,
+        organizacion: organizacion ?? null,
+        observaciones: observaciones ?? null
+      });
+
+    if (cpError) {
+      return res.status(500).json({ ok: false, error: cpError.message });
     }
 
     return res.json({
