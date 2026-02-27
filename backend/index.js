@@ -88,7 +88,6 @@ app.get("/auth/me", requireAuth, async (req, res) => {
   Devuelve:
   - usuario (public.usuario)
   - proyectos_visibles (por empresa)
-  - usuario_proyecto (relaciones del usuario)
 */
 app.post("/sync/login", requireAuth, async (req, res) => {
   const authUser = req.authUser;
@@ -99,61 +98,47 @@ app.post("/sync/login", requireAuth, async (req, res) => {
     .eq("id_usuario", authUser.id)
     .single();
 
-  if (usuarioError) return res.status(500).json({ ok: false, error: usuarioError.message });
+  if (usuarioError)
+    return res.status(500).json({ ok: false, error: usuarioError.message });
 
   const idEmpresa = usuario.id_empresa;
 
-  // Proyectos visibles por empresa (asumiendo que ya agregaste proyecto.id_empresa)
+  // Proyectos visibles por empresa
   const { data: proyectos, error: proyectosError } = await supabase
     .from("proyecto")
     .select("id_proyecto, nombre_proyecto, titular, id_ubicacion, id_empresa")
     .eq("id_empresa", idEmpresa)
     .order("id_proyecto", { ascending: true });
 
-  if (proyectosError) return res.status(500).json({ ok: false, error: proyectosError.message });
+  if (proyectosError)
+    return res.status(500).json({ ok: false, error: proyectosError.message });
 
-  // Relación usuario_proyecto del usuario (puede servir para UI/permisos)
-  const { data: usuarioProyecto, error: upError } = await supabase
-    .from("usuario_proyecto")
-    .select("id_usuario, id_proyecto")
-    .eq("id_usuario", authUser.id);
+  // Catálogo tipo_usuario
+  const { data: tipoUsuario, error: tiposError } = await supabase
+    .from("tipo_usuario")
+    .select("id_tipo_usuario, nombre_tipo")
+    .order("id_tipo_usuario", { ascending: true });
 
-  if (upError) return res.status(500).json({ ok: false, error: upError.message });
+  if (tiposError)
+    return res.status(500).json({ ok: false, error: tiposError.message });
 
+  // Catálogo tipo_archivo
+  const { data: tipoArchivo, error: tipoArchivoError } = await supabase
+    .from("tipo_archivo")
+    .select("id_tipo_archivo, nombre_tipo_archivo")
+    .order("id_tipo_archivo", { ascending: true });
 
-  // Catálogo completo de tipo_usuario
-const { data: tipoUsuario, error: tiposError } = await supabase
-  .from("tipo_usuario")
-  .select("id_tipo_usuario, nombre_tipo")
-  .order("id_tipo_usuario", { ascending: true });
-
-if (tiposError) {
-  return res.status(500).json({ ok: false, error: tiposError.message });
-}
-
-
-// Catálogo completo de tipo_archivo
-const { data: tipoArchivo, error: tipoArchivoError } = await supabase
-  .from("tipo_archivo")
-  .select("id_tipo_archivo, nombre_tipo_archivo")
-  .order("id_tipo_archivo", { ascending: true });
-
-if (tipoArchivoError) {
-  return res.status(500).json({ ok: false, error: tipoArchivoError.message });
-}
-
-
-//JSON de retorno desde supabase
+  if (tipoArchivoError)
+    return res.status(500).json({ ok: false, error: tipoArchivoError.message });
 
   return res.json({
-  ok: true,
-  server_time: new Date().toISOString(),
-  usuario,
-  proyectos_visibles: proyectos ?? [],
-  usuario_proyecto: usuarioProyecto ?? [],
-  tipo_usuario: tipoUsuario ?? [],
-  tipo_archivo: tipoArchivo ?? []
-});
+    ok: true,
+    server_time: new Date().toISOString(),
+    usuario,
+    proyectos_visibles: proyectos ?? [],
+    tipo_usuario: tipoUsuario ?? [],
+    tipo_archivo: tipoArchivo ?? []
+  });
 });
 
 
