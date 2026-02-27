@@ -52,6 +52,10 @@ app.get("/db-check", async (req, res) => {
   res.json({ ok: true, sample: data });
 });
 
+app.get('/ping', (req, res) => {
+  res.status(200).json({ ok: true });
+});
+
 /*
   Endpoint 1: /auth/me
   Devuelve: auth uid + email + fila de public.usuario (si existe)
